@@ -23,6 +23,7 @@ class WechatCard extends Common {
     // 卡卷核查接口
     const CARD_CHECKCODE = '/card/code/checkcode?';
     // 卡卷图文群发获取HTML
+    const CARD_SET_SELFCONSUMECELL = '/card/selfconsumecell/set?';
     const CARD_SEND_HTML = '/card/mpnews/gethtml?';
     const CARD_BATCHGET = '/card/batchget?';
     const CARD_MODIFY_STOCK = '/card/modifystock?';
@@ -41,6 +42,10 @@ class WechatCard extends Common {
     const CARD_BOARDINGPASS_CHECKIN = '/card/boardingpass/checkin?';  //飞机票-在线选座(未加方法)
     /** 更新红包金额 */
     const CARD_LUCKYMONEY_UPDATE = '/card/luckymoney/updateuserbalance?';
+    /*买单接口*/
+    const CARD_PAYCELL_SET = '/card/paycell/set?';
+    /*设置开卡字段接口*/
+    const CARD_MEMBERCARD_ACTIVATEUSERFORM_SET = '/card/membercard/activateuserform/set?';
 
     /**
      * 获取微信卡券 api_ticket
@@ -54,13 +59,11 @@ class WechatCard extends Common {
         }
         $appid = empty($appid) ? $this->appid : $appid;
         if ($jsapi_ticket) {
-            $this->jsapi_ticket = $jsapi_ticket;
-            return $this->jsapi_ticket;
+            return $jsapi_ticket;
         }
         $authname = 'wechat_jsapi_ticket_wxcard_' . $appid;
-        if (($rs = Tools::getCache($authname))) {
-            $this->jsapi_ticket = $rs;
-            return $rs;
+        if (($jsapi_ticket = Tools::getCache($authname))) {
+            return $jsapi_ticket;
         }
         $result = Tools::httpGet(self::API_URL_PREFIX . self::GET_TICKET_URL . "access_token={$this->access_token}" . '&type=wx_card');
         if ($result) {
@@ -70,10 +73,9 @@ class WechatCard extends Common {
                 $this->errMsg = $json['errmsg'];
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
-            $this->jsapi_ticket = $json['ticket'];
             $expire = $json['expires_in'] ? intval($json['expires_in']) - 100 : 3600;
-            Tools::setCache($authname, $this->jsapi_ticket, $expire);
-            return $this->jsapi_ticket;
+            Tools::setCache($authname, $json['ticket'], $expire);
+            return $json['ticket'];
         }
         return false;
     }
@@ -687,6 +689,86 @@ class WechatCard extends Common {
                 return $this->checkRetry(__FUNCTION__, func_get_args());
             }
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * 设置自助核销接口
+     * @param string $card_id 卡券ID
+     * @param bool $is_openid 是否开启自助核销功能，填true/false，默认为false
+     * @param bool $need_verify_cod 用户核销时是否需要输入验证码，填true/false，默认为false
+     * @param bool $need_remark_amount 用户核销时是否需要备注核销金额，填true/false，默认为false
+     * @return bool|array
+     */
+    public function setSelfconsumecell($card_id, $is_openid = false, $need_verify_cod = false, $need_remark_amount = false) {
+        if (!$this->access_token && !$this->getAccessToken()) {
+            return false;
+        }
+        $data = array(
+            'card_id'            => $card_id,
+            'is_open'            => $is_openid,
+            'need_verify_cod'    => $need_verify_cod,
+            'need_remark_amount' => $need_remark_amount,
+        );
+        $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_SET_SELFCONSUMECELL . "access_token={$this->access_token}", Tools::json_encode($data));
+        if ($result) {
+            $json = json_decode($result, true);
+            if (!$json || !empty($json['errcode'])) {
+                $this->errCode = $json['errcode'];
+                $this->errMsg = $json['errmsg'];
+                return $this->checkRetry(__FUNCTION__, func_get_args());
+            }
+            return $json;
+        }
+        return false;
+    }
+
+    /**
+     * 设置买单接口
+     * @param string $card_id
+     * @param bool $is_openid
+     * @return bool|mixed
+     */
+    public function setPaycell($card_id, $is_openid = true) {
+        if (!$this->access_token && !$this->getAccessToken()) {
+            return false;
+        }
+        $data = array(
+            'card_id' => $card_id,
+            'is_open' => $is_openid,
+        );
+        $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_PAYCELL_SET . "access_token={$this->access_token}", Tools::json_encode($data));
+        if ($result) {
+            $json = json_decode($result, true);
+            if (!$json || !empty($json['errcode'])) {
+                $this->errCode = $json['errcode'];
+                $this->errMsg = $json['errmsg'];
+                return $this->checkRetry(__FUNCTION__, func_get_args());
+            }
+            return $json;
+        }
+        return false;
+    }
+
+    /**
+     * 设置开卡字段信息接口
+     * @param array $data
+     * @return bool|array
+     */
+    public function setMembercardActivateuserform($data) {
+        if (!$this->access_token && !$this->getAccessToken()) {
+            return false;
+        }
+        $result = Tools::httpPost(self::API_BASE_URL_PREFIX . self::CARD_MEMBERCARD_ACTIVATEUSERFORM_SET . "access_token={$this->access_token}", Tools::json_encode($data));
+        if ($result) {
+            $json = json_decode($result, true);
+            if (!$json || !empty($json['errcode'])) {
+                $this->errCode = $json['errcode'];
+                $this->errMsg = $json['errmsg'];
+                return $this->checkRetry(__FUNCTION__, func_get_args());
+            }
+            return $json;
         }
         return false;
     }

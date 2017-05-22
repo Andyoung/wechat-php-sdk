@@ -70,26 +70,26 @@ class Tools {
      * @return string
      */
     static public function arr2xml($data, $root = 'xml', $item = 'item', $id = 'id') {
-
-        function _data_to_xml($data, $item = 'item', $id = 'id', $content = '') {
-            foreach ($data as $key => $val) {
-                is_numeric($key) && $key = "{$item} {$id}=\"{$key}\"";
-                $content .= "<{$key}>";
-                if (is_array($val) || is_object($val)) {
-                    $content .= _data_to_xml($val);
-                } elseif (is_numeric($val)) {
-                    $content .= $val;
-                } else {
-                    $content .= '<![CDATA[' . preg_replace("/[\\x00-\\x08\\x0b-\\x0c\\x0e-\\x1f]/", '', $val) . ']]>';
-                }
-                list($_key,) = explode(' ', $key . ' ');
-                $content .= "</$_key>";
-            }
-            return $content;
-        }
-
-        return "<{$root}>" . _data_to_xml($data, $item, $id) . "</{$root}>";
+        return "<{$root}>" . self::_data_to_xml($data, $item, $id) . "</{$root}>";
     }
+
+    static private function _data_to_xml($data, $item = 'item', $id = 'id', $content = '') {
+        foreach ($data as $key => $val) {
+            is_numeric($key) && $key = "{$item} {$id}=\"{$key}\"";
+            $content .= "<{$key}>";
+            if (is_array($val) || is_object($val)) {
+                $content .= self::_data_to_xml($val);
+            } elseif (is_numeric($val)) {
+                $content .= $val;
+            } else {
+                $content .= '<![CDATA[' . preg_replace("/[\\x00-\\x08\\x0b-\\x0c\\x0e-\\x1f]/", '', $val) . ']]>';
+            }
+            list($_key,) = explode(' ', $key . ' ');
+            $content .= "</$_key>";
+        }
+        return $content;
+    }
+
 
     /**
      * 将xml转为array
@@ -102,7 +102,7 @@ class Tools {
 
     /**
      * 生成安全JSON数据
-     * @param $array
+     * @param array $array
      * @return string
      */
     static public function json_encode($array) {
@@ -136,10 +136,10 @@ class Tools {
     /**
      * 以post方式提交请求
      * @param string $url
-     * @param array $postdata
+     * @param array|string $data
      * @return bool|mixed
      */
-    static public function httpPost($url, $postdata) {
+    static public function httpPost($url, $data) {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -147,14 +147,14 @@ class Tools {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
         curl_setopt($ch, CURLOPT_HEADER, FALSE);
         curl_setopt($ch, CURLOPT_POST, TRUE);
-        if (is_array($postdata)) {
-            foreach ($postdata as &$value) {
+        if (is_array($data)) {
+            foreach ($data as &$value) {
                 if (is_string($value) && stripos($value, '@') === 0 && class_exists('CURLFile', FALSE)) {
                     $value = new CURLFile(realpath(trim($value, '@')));
                 }
             }
         }
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postdata);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
         $data = curl_exec($ch);
         curl_close($ch);
         if ($data) {
